@@ -28,6 +28,13 @@ final class DeliverySystemTests: XCTestCase {
         prodRawMaterial = nil
     }
     
+    func test_totalPriceForProductWithQuantity_ReturnsProductTotalPrice(){
+        
+        let totalPrice = Product.totalPriceForProductWithQuantity(prodFood!)
+        
+        XCTAssertEqual(totalPrice, 80.0)
+    }
+    
     func test_ProductType_ReturnsCorrectType()throws{
         
         // when
@@ -43,14 +50,42 @@ final class DeliverySystemTests: XCTestCase {
     func test_ProductType_ThrowsError()throws{
         // given
         
-        let prodNotImplemented =  Product(productIndex: "Raaa-001", quantity: 2, unitPrice: 40.0)
+        let prodNotImplemented =  Product(productIndex: "None-001", quantity: 2, unitPrice: 40.0)
         
         // when - then
         XCTAssertThrowsError(try Product.getProdType(prodNotImplemented))
         
     }
     
-    func test_Discount()throws{
+    func test_chooseDiscountCalculator_returnsCorrectCalculator(){
+        // Food
+        
+        // given
+        let foodDiscountCalculator = order!.chooseDiscountCalculator(ProductType.food)
+        
+        // when
+        let foodDiscountAmount = foodDiscountCalculator(prodFood!)
+        
+        // should be 40.0
+        // then
+        XCTAssertEqual(foodDiscountAmount, 40.0)
+        
+        // ------------------------
+        
+        // Raw Material
+        // given
+        let rawMaterialDiscountCalculator = order!.chooseDiscountCalculator(ProductType.rawMaterial)
+        
+        // when
+        let rawMaterialDiscountAmount = rawMaterialDiscountCalculator(prodRawMaterial!)
+        
+        // should be 40.0
+        // then
+        XCTAssertEqual(rawMaterialDiscountAmount, 16.0)
+        
+    }
+    
+    func test_Discount_ChooseCalculatorAndCalculatesDiscount()throws{
     // given
         order?.products = [prodRawMaterial!]
     // when
@@ -68,7 +103,16 @@ final class DeliverySystemTests: XCTestCase {
         XCTAssertEqual(totalPriceAfterDiscount, 64.0)
         
     }
-    func test_Rules_IsQualified_ReturnsCalculatior()throws {
+    
+    func test_TotalPriceForOrder(){
+        order!.products = [prodFood!, prodRawMaterial!]
+        
+        let totalOrderPrice = Order.totalPriceForOrder(order!)
+        
+        XCTAssertEqual(totalOrderPrice, 160.0)
+        
+    }
+    func test_RulesIsQualified_ReturnsCalculator()throws {
     // given
         order?.products = [prodFood!, prodRawMaterial!]
         
@@ -120,7 +164,7 @@ final class DeliverySystemTests: XCTestCase {
             return orderDiscountAmount
         })
 
-        // rule calculates discount, then reduce from full-order price
+        // rule calculates discount, then substracts from full-order price
     // when
         let isFoodRuleCalculator = try isFoodRule.isOrderQualified(order!)
         let isRawMaterialRuleCalculator = try isRawMaterialRule.isOrderQualified(order!)

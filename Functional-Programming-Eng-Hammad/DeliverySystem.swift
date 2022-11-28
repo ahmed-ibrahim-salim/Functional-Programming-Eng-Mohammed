@@ -79,7 +79,6 @@ extension Order{
     
     func getDiscountCalulatorByProductType(product: Product) throws -> (type: ProductType,
                                                                           discountClo: (Product)->Double) {
-        
         let prodType = try Product.getProdType(product)
         
         // choosing calculation closure
