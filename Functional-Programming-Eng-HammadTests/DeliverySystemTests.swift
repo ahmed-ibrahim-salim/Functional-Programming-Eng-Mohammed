@@ -11,115 +11,169 @@ import XCTest
 
 final class DeliverySystemTests: XCTestCase {
     
-    override func setUpWithError() throws {  }
+    var order: Order?
+    var prodFood: Product?
+    var prodRawMaterial: Product?
     
-    override func tearDownWithError() throws { }
+    override func setUpWithError() throws {
+        order = Order()
+        prodFood =  Product(productIndex: "FOO-001", quantity: 2, unitPrice: 40.0)
+        prodRawMaterial =  Product(productIndex: "RAW-001", quantity: 2, unitPrice: 40.0)
+                
+    }
+    
+    override func tearDownWithError() throws {
+        order = nil
+        prodFood = nil
+        prodRawMaterial = nil
+    }
     
     func test_ProductType_ReturnsCorrectType()throws{
-        // given
-        let order = Order()
-        
-        let prodFood =  Product(productIndex: "FOO-001", quantity: 2, unitPrice: 40.0)
-        
-        let prodRawMaterial =  Product(productIndex: "RAW-001", quantity: 2, unitPrice: 40.0)
         
         // when
-        let prodAsFood = try order.getProductType(prodFood)
-        let prodAsRaw = try order.getProductType(prodRawMaterial)
+        let prodAsFood = try Product.getProdType(prodFood!)
+        let prodAsRaw = try Product.getProdType(prodRawMaterial!)
         
         // then
-        XCTAssertEqual(prodAsFood.type, .food)
-        XCTAssertEqual(prodAsRaw.type, .rawMaterial)
+        XCTAssertEqual(prodAsFood, .food)
+        XCTAssertEqual(prodAsRaw, .rawMaterial)
         
     }
     
     func test_ProductType_ThrowsError()throws{
         // given
-        let order = Order()
         
         let prodNotImplemented =  Product(productIndex: "Raaa-001", quantity: 2, unitPrice: 40.0)
         
         // when - then
-        XCTAssertThrowsError(try order.getProductType(prodNotImplemented))
+        XCTAssertThrowsError(try Product.getProdType(prodNotImplemented))
         
     }
     
     func test_Discount()throws{
-        // given
-        let order = Order()
-        
-        let prodRawMaterial =  Product(productIndex: "RAW-001", quantity: 2, unitPrice: 40.0)
-        
-        // when
-        // 2*40 = 80 after discount  2*(40 - (40/5)) = 64
+    // given
+        order?.products = [prodRawMaterial!]
+    // when
         
         // passing getProductType without excuting it
-        let orderAfterDiscount = try order.discount(prodRawMaterial, order.getProductType(_:))
+        let discountAmount = try order!.discount(prodRawMaterial!, order!.getDiscountCalulatorByProductType(product:))
         
-        // then
-        XCTAssertEqual(orderAfterDiscount, 64.0)
+        XCTAssertEqual(discountAmount, 16.0)
+        
+        XCTAssertEqual(Order.totalPriceForOrder(order!), 80)
+        
+        let totalPriceAfterDiscount = Order.totalPriceForOrder(order!) - discountAmount
+        
+    // then
+        XCTAssertEqual(totalPriceAfterDiscount, 64.0)
         
     }
     func test_Rules_IsQualified_ReturnsCalculatior()throws {
-        // given
-        let prodFood =  Product(productIndex: "FOO-001", quantity: 2, unitPrice: 40.0)
-        let prodRawMaterial =  Product(productIndex: "RAW-001", quantity: 2, unitPrice: 40.0)
-        
-        let order = Order()
-        order.products = [prodFood, prodRawMaterial]
+    // given
+        order?.products = [prodFood!, prodRawMaterial!]
         
         // defining rule as a condition and calculator
-        let rule = Rule(qualifier: {
+        let isFoodRule = Rule(qualifier: {
             order in
-            // defining condition
-            return order.products[0].productIndex == "FOO-001"
-        }, calculator: {
+            // defining a condition
+            let prodsQualified = try order.products.filter({
+                product in
+                let prodType = try Product.getProdType(product)
+                return prodType == ProductType.food
+            })
+            return prodsQualified.count > 0
+        }, discountCalculator: {
             order in
-            // 32 + 32
-            let prices = order.products
-                .map({$0.unitPrice - ($0.unitPrice / 5)})
+            let orderDiscountAmount = order.products
+                .map({
+                    product in
+                    return Product.totalPriceForProductWithQuantity(product) / 5
+                })
                 .reduce(0){
                     item, next in
                     return item + next
                 }
-            return prices
+            return orderDiscountAmount
         })
         
+        let isRawMaterialRule = Rule(qualifier: {
+            order in
+            // defining a condition
+            let prodsQualified = try order.products.filter({
+                product in
+                let prodType = try Product.getProdType(product)
+                return prodType == ProductType.rawMaterial
+            })
+            return prodsQualified.count > 0
+        }, discountCalculator: {
+            order in
+            let orderDiscountAmount = order.products
+                .map({
+                    product in
+                    // discountForProduct = totalProductPrice/5
+                    return Product.totalPriceForProductWithQuantity(product) / 5
+                })
+                .reduce(0){
+                    item, next in
+                    return item + next
+                }
+            return orderDiscountAmount
+        })
+
+        // rule calculates discount, then reduce from full-order price
     // when
-        let calculator = try rule.isQualified(order)
+        let isFoodRuleCalculator = try isFoodRule.isOrderQualified(order!)
+        let isRawMaterialRuleCalculator = try isRawMaterialRule.isOrderQualified(order!)
         
-        let returnedOrderPrice = calculator(order)
+        let discountCalculators: [ (Order)->Double ] = [isFoodRuleCalculator, isRawMaterialRuleCalculator]
+                
+        let orderTotalDiscounts: Double = discountCalculators.map({
+            dicountCalc in
+            return dicountCalc(order!)
+        }).reduce(0){
+            item, next in
+            return item + next
+        }
+        
+        let orderPriceAfterDiscounts = Order.totalPriceForOrder(order!) - orderTotalDiscounts
     // then
-        XCTAssertEqual(returnedOrderPrice, 64.0)
+        XCTAssertEqual(orderPriceAfterDiscounts, 96.0)
     }
     
     func test_Rules_NotQualified_ThrowsRuleError()throws {
         // given
-        let prodFood =  Product(productIndex: "FOO-001", quantity: 2, unitPrice: 40.0)
-        let prodRawMaterial =  Product(productIndex: "RAW-001", quantity: 2, unitPrice: 40.0)
+        let prodBaverage =  Product(productIndex: "BAV-001", quantity: 2, unitPrice: 40.0)
         
-        let order = Order()
-        order.products = [prodFood, prodRawMaterial]
+        order?.products = [prodBaverage, prodRawMaterial!]
         
         // defining rule as a condition and calculator
         let rule = Rule(qualifier: {
             order in
-            // defining condition
-            return order.products[0].productIndex == "None"
-        }, calculator: {
+            // defining a condition
+            let prodsQualified = try order.products.filter({
+                product in
+                let prodType = try Product.getProdType(product)
+                return prodType == ProductType.food
+            })
+            return prodsQualified.count > 0
+//            productIndex == "FOO-001"
+        }, discountCalculator: {
             order in
-            // 32 + 32
-            let prices = order.products
-                .map({$0.unitPrice - ($0.unitPrice / 5)})
+            let orderDiscountAmount = order.products
+                .map({
+                    product in
+                    // discountForProduct = totalProductPrice/5
+                    return Product.totalPriceForProductWithQuantity(product) / 5
+                })
                 .reduce(0){
                     item, next in
                     return item + next
                 }
-            return prices
+            return orderDiscountAmount
         })
         
-    // when - then
-        XCTAssertThrowsError(try rule.isQualified(order))
+        // when - then
+        XCTAssertThrowsError(try rule.isOrderQualified(order!))
         
     }
 }
