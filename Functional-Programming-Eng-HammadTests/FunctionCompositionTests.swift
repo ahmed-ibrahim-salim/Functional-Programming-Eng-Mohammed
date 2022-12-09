@@ -36,4 +36,25 @@ final class FunctionCompositionTests: XCTestCase {
         
         XCTAssertEqual([15.0, 26.0, 111.0, 159.0], numsAfter)
     }
+    
+    func test_calculateFrieghtCost(){
+        let order = NewOrder()
+        let invoice = CreateInvoice1()
+        let shipping = CreateShipping1()
+        let frieghtCostCalculator = CalculateFrieghtCost1()
+        
+        guard let frieghtCostCalculatorFunc = (example?.calculateFrieghtCost(
+            order: order,
+            invoice.createInvoice(order:),
+            shipping.createShipping(invoice:),
+            frieghtCostCalculator.calculateFrieghtCost(shipping:))) else{
+            XCTFail()
+            return
+        }
+        
+        let frieghtCostValue = frieghtCostCalculatorFunc(order)
+        
+        XCTAssertEqual(frieghtCostValue.value, 20.0)
+    }
+    
 }
