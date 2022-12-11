@@ -17,11 +17,11 @@ struct FrieghtCost{
 }
 
 struct Availability{}
-struct ShippingDate{}
-
+struct ShippingDate{
+    var shippingValue: Double
+}
 
 class Example{
-    
     
     func calculateFrieghtCost<T1,T2,T3,T4>(order: T1,_ f1: @escaping (T1)->T2,
                                            _ f2: @escaping (T2)->T3,
@@ -30,23 +30,29 @@ class Example{
         return {_ in f3(f2(f1(order)))}
     }
     
-    func compose<T1,T2,T3,T4>(_ f1: @escaping (T1)->T2,
-                              _ f2: @escaping (T2)->T3,
-                              _ f3: @escaping (T3)->T4)-> (T1)->T4{
-        
-        // function definition
-        return { num in f3(f2(f1(num))) }
+    func calculateShippingDate<T1,T2,T3>(order: T1,
+                                         _ f1: @escaping (T1)->T2,
+                                         _ f2: @escaping (T2)->T3)->(T1)->T3{
+        return {_ in f2(f1(order))}
     }
-    func addOne(num: Double)->Double{num + 1}
     
-    func square(num: Double)->Double{num * num}
+    func adjustCost<T1>(order: T1,
+                        _ f1: (T1)->FrieghtCost,
+                        _ f2: (T1)->ShippingDate)->Double{
+        let frieghtCost = f1(order)
+        let shippongDate = f2(order)
+        
+        // based on the last two calculations
+        let cost = 44.0
+        
+        return cost
+    }
     
-    func subtractTen(num: Double)->Double{num - 10}
 }
 
 // --------------------
 // Strategy design pattern
-// 5 protocols for main purposes and each protocol has 3 implementations
+// 3 protocols for main purposes and each protocol has 3 implementations
 protocol CreateInvoice{
     func createInvoice(order: NewOrder)->Invoice
 }
@@ -56,15 +62,9 @@ protocol CreateShipping{
 protocol CalculateFrieghtCost{
     func calculateFrieghtCost(shipping: Shipping)->FrieghtCost
 }
-protocol CheckAvailability{
-    func checkAvailability(order: NewOrder)->Availability
-}
-protocol GetShippingDate{
-    func GetShippingDate(availability: Availability)->ShippingDate
-}
+
 
 // different implementations
-
 
 // ---------------------------------------
 struct CalculateFrieghtCost1: CalculateFrieghtCost{
@@ -82,6 +82,7 @@ struct CalculateFrieghtCost3: CalculateFrieghtCost{
         return FrieghtCost(value: 60)
     }
 }
+
 // ----------------------------------
 struct CreateShipping1: CreateShipping{
     func createShipping(invoice: Invoice) -> Shipping {
@@ -98,6 +99,7 @@ struct CreateShipping3: CreateShipping{
         return Shipping()
     }
 }
+
 // ----------------------------------------
 struct CreateInvoice1: CreateInvoice{
     func createInvoice(order: NewOrder) -> Invoice {
@@ -114,26 +116,37 @@ struct CreateInvoice3: CreateInvoice{
         return Invoice()
     }
 }
-// -------------------------------------------
 
+// --------------------
+// Strategy design pattern
+// 3 protocols for main purposes and each protocol has 3 implementations
+protocol CheckAvailability{
+    func checkAvailability(order: NewOrder)->Availability
+}
+protocol GetShippingDate{
+    func GetShippingDate(availability: Availability)->ShippingDate
+}
+
+// -------------------------------------------
 struct GetShippingDate1: GetShippingDate{
     func GetShippingDate(availability: Availability) -> ShippingDate {
-        return ShippingDate()
+        return ShippingDate(shippingValue: 12)
     }
     
 }
 struct GetShippingDate2: GetShippingDate{
     func GetShippingDate(availability: Availability) -> ShippingDate {
-        return ShippingDate()
+        return ShippingDate(shippingValue: 15)
     }
     
 }
 struct GetShippingDate3: GetShippingDate{
     func GetShippingDate(availability: Availability) -> ShippingDate {
-        return ShippingDate()
+        return ShippingDate(shippingValue: 20)
     }
     
 }
+
 // ------------------------------------
 struct CheckAvailability1: CheckAvailability{
     func checkAvailability(order: NewOrder) -> Availability {
@@ -151,3 +164,23 @@ struct CheckAvailability3: CheckAvailability{
         return Availability()
     }
 }
+
+
+// small example
+extension Example{
+    
+    
+    func compose<T1,T2,T3,T4>(_ f1: @escaping (T1)->T2,
+                              _ f2: @escaping (T2)->T3,
+                              _ f3: @escaping (T3)->T4)-> (T1)->T4{
+        
+        // function definition
+        return { num in f3(f2(f1(num))) }
+    }
+    func addOne(num: Double)->Double{num + 1}
+    
+    func square(num: Double)->Double{num * num}
+    
+    func subtractTen(num: Double)->Double{num - 10}
+}
+

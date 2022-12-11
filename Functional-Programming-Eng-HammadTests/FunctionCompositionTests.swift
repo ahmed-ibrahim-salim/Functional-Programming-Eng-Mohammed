@@ -43,11 +43,11 @@ final class FunctionCompositionTests: XCTestCase {
         let shipping = CreateShipping1()
         let frieghtCostCalculator = CalculateFrieghtCost1()
         
-        guard let frieghtCostCalculatorFunc = (example?.calculateFrieghtCost(
+        guard let frieghtCostCalculatorFunc = example?.calculateFrieghtCost(
             order: order,
             invoice.createInvoice(order:),
             shipping.createShipping(invoice:),
-            frieghtCostCalculator.calculateFrieghtCost(shipping:))) else{
+            frieghtCostCalculator.calculateFrieghtCost(shipping:)) else{
             XCTFail()
             return
         }
@@ -55,6 +55,59 @@ final class FunctionCompositionTests: XCTestCase {
         let frieghtCostValue = frieghtCostCalculatorFunc(order)
         
         XCTAssertEqual(frieghtCostValue.value, 20.0)
+    }
+    
+    func test_calculateShippingDate(){
+        let order = NewOrder()
+        let availability = CheckAvailability1()
+        let shippingDate = GetShippingDate1()
+        
+        guard let calculateShippingDateFunc = example?.calculateShippingDate(
+            order: order,
+            availability.checkAvailability(order:),
+            shippingDate.GetShippingDate(availability:)) else{
+            XCTFail()
+            return
+        }
+        
+        let shippingDateValue = calculateShippingDateFunc(order)
+        
+        XCTAssertEqual(shippingDateValue.shippingValue, 12)
+    }
+    
+    func test_AdjustCost(){
+        let order = NewOrder()
+        //
+        let invoice = CreateInvoice1()
+        let shipping = CreateShipping1()
+        let frieghtCostCalculator = CalculateFrieghtCost1()
+        //
+        let availability = CheckAvailability1()
+        let shippingDate = GetShippingDate1()
+        
+        //
+        guard let frieghtCostCalculatorFunc = example?.calculateFrieghtCost(
+            order: order,
+            invoice.createInvoice(order:),
+            shipping.createShipping(invoice:),
+            frieghtCostCalculator.calculateFrieghtCost(shipping:)) else{
+            XCTFail()
+            return
+        }
+        //
+        guard let calculateShippingDateFunc = example?.calculateShippingDate(
+            order: order,
+            availability.checkAvailability(order:),
+            shippingDate.GetShippingDate(availability:)) else{
+            XCTFail()
+            return
+        }
+        
+        let adjustedCost = example?.adjustCost(order: order,
+                                               frieghtCostCalculatorFunc,
+                                               calculateShippingDateFunc)
+        
+        XCTAssertEqual(adjustedCost, 44.0)
     }
     
 }
